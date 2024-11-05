@@ -47,3 +47,9 @@ This will prompt you for two (2) directories as input:
 
 - Splice Directory
 - Final Directory (where files are copied to)
+
+To which you can then invoke the script without commandline arguments
+
+```
+./app.py
+```
