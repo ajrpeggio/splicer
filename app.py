@@ -18,7 +18,7 @@ def get_audio_files(source: Path, extensions: Tuple[str]) -> List[Path]:
 
     Args:
         source (Path): The root directory to search for audio files.
-        extensions (List[str]): A list of file extensions to look for.
+        extensions (Tuple[str]): A list of file extensions to look for.
 
     Returns:
         List[Path]: A list of file paths for the audio files found.
