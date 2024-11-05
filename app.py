@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-
 import shutil
 import argparse
 import json
 
 from pathlib import Path
 from typing import List, Optional, Tuple
+
 
 # List of file extensions for audio files to copy (e.g., WAV, MP3, AIFF)
 audio_extensions: Tuple[str] = (".wav", ".mp3", ".aiff")
@@ -69,9 +69,10 @@ def copy_files(file_list: List[Path], final_dir: Path, dryrun: bool) -> None:
             dest_size = destination_path.stat().st_size
 
             if source_size == dest_size:
-                print(
-                    f"Skipped {file_path.name}, already exists in staging and matches."
-                )
+                if dryrun:
+                    print(
+                        f"Skipped {file_path.name}, already exists in staging and matches."
+                    )
                 continue
             else:
                 print(f"Overwriting {file_path.name}, different size in staging.")
