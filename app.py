@@ -24,8 +24,8 @@ def get_audio_files(source: Path, extensions: List[str]) -> List[Path]:
         List[Path]: A list of file paths for the audio files found.
     """
     files_to_copy: List[Path] = []
-    
-    for file_path in source.rglob('*'):
+
+    for file_path in source.rglob("*"):
         if any(file_path.suffix.lower() == ext for ext in extensions):
             files_to_copy.append(file_path)
 
@@ -47,7 +47,7 @@ def copy_files(file_list: List[Path], final_dir: Path, dryrun: bool) -> None:
         None
     """
     staging_dir = final_dir / "staging"
-    
+
     if not dryrun:
         staging_dir.mkdir(parents=True, exist_ok=True)
 
@@ -55,7 +55,11 @@ def copy_files(file_list: List[Path], final_dir: Path, dryrun: bool) -> None:
         destination_path = staging_dir / file_path.name
 
         # Check if the file already exists in the final_dir or its subdirectories
-        if any((final_dir / sub_path).exists() and (final_dir / sub_path).name == file_path.name for sub_path in final_dir.rglob('*')):
+        if any(
+            (final_dir / sub_path).exists()
+            and (final_dir / sub_path).name == file_path.name
+            for sub_path in final_dir.rglob("*")
+        ):
             if dryrun:
                 print(f"Skipped {file_path.name}, already exists in final directory.")
             continue
@@ -63,13 +67,15 @@ def copy_files(file_list: List[Path], final_dir: Path, dryrun: bool) -> None:
         if destination_path.exists():
             source_size = file_path.stat().st_size
             dest_size = destination_path.stat().st_size
-            
+
             if source_size == dest_size:
-                print(f"Skipped {file_path.name}, already exists in staging and matches.")
+                print(
+                    f"Skipped {file_path.name}, already exists in staging and matches."
+                )
                 continue
             else:
                 print(f"Overwriting {file_path.name}, different size in staging.")
-        
+
         if dryrun:
             print(f"Would copy {file_path.name} to {destination_path}")
         else:
@@ -104,7 +110,7 @@ def load_config(config_path: Path) -> dict:
         dict: The parsed JSON configuration with key 'splice_dir'.
     """
     try:
-        with open(config_path, 'r') as file:
+        with open(config_path, "r") as file:
             config = json.load(file)
             return config
     except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -126,16 +132,18 @@ def main(args: argparse.Namespace) -> None:
     # Load config file if paths are not provided
     if args.splice is None or args.final is None:
         config = load_config(resolve_path(args.config))
-        
+
         if args.splice is None:
-            args.splice = config.get('splice_dir')
-        
+            args.splice = config.get("splice_dir")
+
         if args.final is None:
-            args.final = config.get('final_dir')
-        
+            args.final = config.get("final_dir")
+
         # Validate that paths are now defined
         if not args.splice or not args.final:
-            print("Error: Splice directory or final directory is not specified in arguments or config file.")
+            print(
+                "Error: Splice directory or final directory is not specified in arguments or config file."
+            )
             return
 
     # Resolve both source and destination directories to Path objects
@@ -150,11 +158,32 @@ def main(args: argparse.Namespace) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Copy audio files from Splice folder to a final directory's staging directory.")
-    parser.add_argument('--splice', '-s', default=None, help="The root directory where Splice downloads are saved.")
-    parser.add_argument('--final', '-f', required=True, help="The final directory where the audio files will be moved to.")
-    parser.add_argument('--config', '-c', default='/opt/splicer/config.json', help="Path to the JSON configuration file.")
-    parser.add_argument('--dryrun', action='store_true', help="If set, only print the files that would be copied without performing the copy.")
-    
+    parser = argparse.ArgumentParser(
+        description="Copy audio files from Splice folder to a final directory's staging directory."
+    )
+    parser.add_argument(
+        "--splice",
+        "-s",
+        default=None,
+        help="The root directory where Splice downloads are saved.",
+    )
+    parser.add_argument(
+        "--final",
+        "-f",
+        required=True,
+        help="The final directory where the audio files will be moved to.",
+    )
+    parser.add_argument(
+        "--config",
+        "-c",
+        default="/opt/splicer/config.json",
+        help="Path to the JSON configuration file.",
+    )
+    parser.add_argument(
+        "--dryrun",
+        action="store_true",
+        help="If set, only print the files that would be copied without performing the copy.",
+    )
+
     args = parser.parse_args()
     main(args)
