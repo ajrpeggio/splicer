@@ -21,12 +21,12 @@ This Python script is designed to copy audio files from a specified Splice downl
 
 1. **Clone the Repository**
    ```bash
-   git clone <repository-url>
-   cd <repository-directory>
+   git clone https://github.com/ajrpeggio/splicer.git
+   cd splicer
    ```
 1. **Run Script**
     ```bash
-    python3 app.py --splice-dir <splice-directory> --final-dir <final-directory> [--config <config-path>] [--dryrun]
+    python3 app.py --splice <splice-directory> --final <final-directory> [--config <config-path>] [--dryrun]
     ```
 
 ## Example Command
