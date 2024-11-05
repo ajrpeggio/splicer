@@ -37,25 +37,13 @@ python3 app.py -s ~/Splice -f ~/Final
 
 ## Configuration
 
-If you prefer not to specify the Splice directory in the command line, you can create a JSON configuration file (default path: /opt/splicer/config.json) with the following structure:
+If you prefer not to specify the Splice directory in the command line, you can create a JSON configuration file (default path: /opt/splicer/config.json) with the following script
 
 ```bash
-#!/bin/bash
-
-# Create the directory and set ownership
-mkdir -p /opt/splicer
-chown $(whoami):staff /opt/splicer
-
-# Write the config file
-cat <<EOF > /opt/splicer/config.json
-{
-  "splice_dir": "/path/to/splice",
-  "final_dir": "/path/to/final"
-}
-EOF
-
-# Change ownership of the config file
-chown $(whoami):staff /opt/splicer/config.json
-
-echo "Configuration directory and file created with ownership set to $(whoami):staff"
+./setup.sh
 ```
+
+This will prompt you for two (2) directories as input:
+
+- Splice Directory
+- Final Directory (where files are copied to)
