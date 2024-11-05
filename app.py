@@ -5,13 +5,13 @@ import argparse
 import json
 
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 # List of file extensions for audio files to copy (e.g., WAV, MP3, AIFF)
-audio_extensions: List[str] = [".wav", ".mp3", ".aiff"]
+audio_extensions: Tuple[str] = (".wav", ".mp3", ".aiff")
 
 
-def get_audio_files(source: Path, extensions: List[str]) -> List[Path]:
+def get_audio_files(source: Path, extensions: Tuple[str]) -> List[Path]:
     """
     Walks through the source directory and returns a list of audio files
     that match the specified extensions.
