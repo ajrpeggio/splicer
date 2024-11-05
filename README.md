@@ -1,34 +1,57 @@
-# Audio File Copying Script
+# Audio File Copy Script
 
-This script is designed to copy audio files from a specified Splice download directory to a staging directory. It checks for duplicates in both the staging directory and a designated final directory to avoid unnecessary copying.
+## Overview
+
+This Python script is designed to copy audio files from a specified Splice download directory to a designated final directory's staging directory. It efficiently checks for duplicate files, ensuring that only new or modified files are copied, thereby maintaining an organized audio library.
 
 ## Features
 
-- Recursively searches for audio files with specified extensions in the Splice directory.
-- Copies audio files to a specified destination directory.
-- Skips files that already exist in the destination or final directory with matching sizes.
-- Supports a dry run mode to preview actions without performing any file operations.
-- Configuration options can be specified via command-line arguments or a JSON configuration file.
+- Recursively searches for audio files in the specified Splice directory.
+- Copies supported audio file formats: `.wav`, `.mp3`, `.aiff`.
+- Creates a "staging" directory inside the final directory if it does not exist.
+- Skips files that already exist in the final directory and its subdirectories, or that match in size.
+- Provides a dry run option to preview actions without making any changes.
 
 ## Requirements
 
 - Python 3.x
-- The following standard libraries:
-  - `shutil`
-  - `argparse`
-  - `json`
-  - `pathlib`
-  - `typing`
+- `shutil`, `argparse`, `json`, `pathlib` libraries (included in the standard library)
 
 ## Installation
 
-1. Clone this repository or download the script file.
-2. Ensure you have Python 3 installed on your system.
+1. **Clone the Repository:**
+   ```bash
+   git clone <repository-url>
+   cd <repository-directory>
+   ```
+1. **Run Script
+  ```bash
+  python3 audio_file_copy.py --splice-dir <splice-directory> --final-dir <final-directory> [--config <config-path>] [--dryrun]
+  ```
 
-## Usage
+## Example Command
 
-### Command-Line Arguments
+  ```bash
+  python3 audio_file_copy.py -s ~/Splice -f ~/Final
+  ```
 
-```bash
-python3 audio_file_copy.py --splice-dir <splice_directory> --destination-dir <destination_directory> --final-dir <final_directory> [--config <config_file>] [--dryrun]
+## Configuration
 
+If you prefer not to specify the Splice directory in the command line, you can create a JSON configuration file (default path: /opt/splicer/config.json) with the following structure:
+
+  ```bash
+  #!/bin/bash
+
+  # Define the path for the configuration file
+  CONFIG_PATH="/opt/splicer/config.json"
+
+  # Create the configuration file using a here-document
+  cat <<EOF > "$CONFIG_PATH"
+  {
+      "splice_dir": "/path/to/your/splice/directory",
+      "final_dir": "/path/to/your/final/directory"
+  }
+  EOF
+
+  echo "Configuration file created at $CONFIG_PATH"
+  ```
