@@ -2,6 +2,7 @@
 import shutil
 import argparse
 import json
+import sys
 
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -13,53 +14,51 @@ audio_extensions = (".wav", ".mp3", ".aiff")
 
 def get_audio_files(source: Path, extensions: Tuple[str]) -> List[Path]:
     """
-    Walks through the source directory and returns a list of audio files
-    that match the specified extensions.
+    Recursively retrieves a list of audio files from the specified source directory
+    that match the given file extensions.
 
     Args:
         source (Path): The root directory to search for audio files.
-        extensions (Tuple[str]): A list of file extensions to look for.
+        extensions (Tuple[str]): A tuple of file extensions to look for, e.g., (".wav", ".mp3").
 
     Returns:
-        List[Path]: A list of file paths for the audio files found.
+        List[Path]: A list of Path objects representing the audio files found in the source directory.
     """
-    files_to_copy = []
-
-    for file_path in source.rglob("*"):
-        if any(file_path.suffix.lower() == ext for ext in extensions):
-            files_to_copy.append(file_path)
-
-    return files_to_copy
+    extensions_set = {ext.lower() for ext in extensions}
+    return [
+        file_path
+        for file_path in source.rglob("*")
+        if file_path.suffix.lower() in extensions_set
+    ]
 
 
 def copy_files(file_list: List[Path], final_dir: Path, dryrun: bool) -> None:
     """
-    Copies files from the source list to the final directory's staging directory,
-    skipping files that already exist in final_dir and match in size. If dryrun is enabled,
-    only prints the actions without actually copying.
+    Copies audio files from the provided list to the final directory's staging subdirectory.
+    Skips files that already exist in the final directory and match in size. If dryrun is enabled,
+    only prints the actions without actually copying files.
 
     Args:
-        file_list (List[Path]): A list of file paths to be copied.
-        final_dir (Path): The target directory where files should be copied.
-        dryrun (bool): If True, only prints actions instead of copying files.
+        file_list (List[Path]): A list of Path objects representing the audio files to be copied.
+        final_dir (Path): The target directory where files should be copied, which contains a "staging" subdirectory.
+        dryrun (bool): If True, only prints the actions that would be taken without performing the copy.
 
     Returns:
-        None
+        None: This function does not return any value. It performs file copy operations.
     """
     staging_dir = final_dir / "staging"
-
     if not dryrun:
         staging_dir.mkdir(parents=True, exist_ok=True)
+
+    existing_files = {
+        file.name: file for file in final_dir.rglob("*") if file.is_file()
+    }
 
     for file_path in file_list:
         destination_path = staging_dir / file_path.name
 
-        # Check if the file already exists in the final_dir or its subdirectories
-        if any(
-            (final_dir / sub_path).exists()
-            and (final_dir / sub_path).name == file_path.name
-            for sub_path in final_dir.rglob("*")
-        ):
+        # Check if the file already exists in existing_files
+        if file_path.name in existing_files:
             if dryrun:
                 print(f"Skipped {file_path.name}, already exists in final directory.")
             continue
@@ -185,6 +184,9 @@ if __name__ == "__main__":
         action="store_true",
         help="If set, only print the files that would be copied without performing the copy.",
     )
-
     args = parser.parse_args()
-    main(args)
+    try:
+        main(args)
+    except RuntimeError as e:
+        print(e)
+        sys.exit(1)
