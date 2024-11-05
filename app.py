@@ -150,6 +150,11 @@ def main(args: argparse.Namespace) -> None:
     splice_dir = resolve_path(args.splice)
     final_dir = resolve_path(args.final)
 
+    # Create the final directory if it doesn't exist
+    if not final_dir.exists():
+        print(f"Creating final directory: {final_dir}")
+        final_dir.mkdir(parents=True, exist_ok=True)
+
     # Get a list of audio files that need to be copied
     files_to_copy = get_audio_files(splice_dir, audio_extensions)
 
