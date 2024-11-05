@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple
 
 
 # List of file extensions for audio files to copy (e.g., WAV, MP3, AIFF)
-audio_extensions: Tuple[str] = (".wav", ".mp3", ".aiff")
+audio_extensions = (".wav", ".mp3", ".aiff")
 
 
 def get_audio_files(source: Path, extensions: Tuple[str]) -> List[Path]:
@@ -23,7 +23,7 @@ def get_audio_files(source: Path, extensions: Tuple[str]) -> List[Path]:
     Returns:
         List[Path]: A list of file paths for the audio files found.
     """
-    files_to_copy: List[Path] = []
+    files_to_copy = []
 
     for file_path in source.rglob("*"):
         if any(file_path.suffix.lower() == ext for ext in extensions):
