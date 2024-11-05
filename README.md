@@ -19,21 +19,21 @@ This Python script is designed to copy audio files from a specified Splice downl
 
 ## Installation
 
-1. **Clone the Repository:**
+1. **Clone the Repository**
    ```bash
    git clone <repository-url>
    cd <repository-directory>
    ```
-1. **Run Script
-  ```bash
-  python3 audio_file_copy.py --splice-dir <splice-directory> --final-dir <final-directory> [--config <config-path>] [--dryrun]
-  ```
+1. **Run Script**
+    ```bash
+    python3 audio_file_copy.py --splice-dir <splice-directory> --final-dir <final-directory> [--config <config-path>] [--dryrun]
+    ```
 
 ## Example Command
 
-  ```bash
-  python3 audio_file_copy.py -s ~/Splice -f ~/Final
-  ```
+```bash
+python3 audio_file_copy.py -s ~/Splice -f ~/Final
+```
 
 ## Configuration
 
