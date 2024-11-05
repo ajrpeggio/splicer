@@ -134,10 +134,10 @@ def main(args: argparse.Namespace) -> None:
         config = load_config(resolve_path(args.config))
 
         if args.splice is None:
-            args.splice = config.get("splice_dir")
+            args.splice = config.get("splice")
 
         if args.final is None:
-            args.final = config.get("final_dir")
+            args.final = config.get("final")
 
         # Validate that paths are now defined
         if not args.splice or not args.final:
@@ -170,7 +170,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--final",
         "-f",
-        required=True,
+        default=None,
         help="The final directory where the audio files will be moved to.",
     )
     parser.add_argument(
