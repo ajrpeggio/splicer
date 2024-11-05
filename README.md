@@ -39,19 +39,23 @@ This Python script is designed to copy audio files from a specified Splice downl
 
 If you prefer not to specify the Splice directory in the command line, you can create a JSON configuration file (default path: /opt/splicer/config.json) with the following structure:
 
-  ```bash
-  #!/bin/bash
+```bash
+#!/bin/bash
 
-  # Define the path for the configuration file
-  CONFIG_PATH="/opt/splicer/config.json"
+# Create the directory and set ownership
+mkdir -p /opt/splicer
+chown $(whoami):staff /opt/splicer
 
-  # Create the configuration file using a here-document
-  cat <<EOF > "$CONFIG_PATH"
-  {
-      "splice_dir": "/path/to/your/splice/directory",
-      "final_dir": "/path/to/your/final/directory"
-  }
-  EOF
+# Write the config file
+cat <<EOF > /opt/splicer/config.json
+{
+  "splice_dir": "/path/to/splice",
+  "final_dir": "/path/to/final"
+}
+EOF
 
-  echo "Configuration file created at $CONFIG_PATH"
-  ```
+# Change ownership of the config file
+chown $(whoami):staff /opt/splicer/config.json
+
+echo "Configuration directory and file created with ownership set to $(whoami):staff"
+```
