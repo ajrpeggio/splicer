@@ -14,15 +14,14 @@ audio_extensions = (".wav", ".mp3", ".aiff")
 
 def get_audio_files(source: Path, extensions: Tuple[str]) -> List[Path]:
     """
-    Recursively retrieves a list of audio files from the specified source directory
-    that match the given file extensions.
+    Recursively retrieves audio files with specific extensions from the source directory.
 
     Args:
-        source (Path): The root directory to search for audio files.
-        extensions (Tuple[str]): A tuple of file extensions to look for, e.g., (".wav", ".mp3").
+        source (Path): The directory to search for audio files.
+        extensions (Tuple[str]): File extensions to filter for audio files.
 
     Returns:
-        List[Path]: A list of Path objects representing the audio files found in the source directory.
+        List[Path]: List of file paths that match the specified audio extensions.
     """
     extensions_set = {ext.lower() for ext in extensions}
     return [
@@ -34,17 +33,16 @@ def get_audio_files(source: Path, extensions: Tuple[str]) -> List[Path]:
 
 def copy_files(file_list: List[Path], final_dir: Path, dryrun: bool) -> None:
     """
-    Copies audio files from the provided list to the final directory's staging subdirectory.
-    Skips files that already exist in the final directory and match in size. If dryrun is enabled,
-    only prints the actions without actually copying files.
+    Copies files from a list to the staging directory within the final directory.
+    Skips files if they already exist with the same size.
 
     Args:
-        file_list (List[Path]): A list of Path objects representing the audio files to be copied.
-        final_dir (Path): The target directory where files should be copied, which contains a "staging" subdirectory.
-        dryrun (bool): If True, only prints the actions that would be taken without performing the copy.
+        file_list (List[Path]): List of file paths to be copied.
+        final_dir (Path): The final destination directory.
+        dryrun (bool): If True, only prints the actions without copying.
 
     Returns:
-        None: This function does not return any value. It performs file copy operations.
+        None
     """
     staging_dir = final_dir / "staging"
     if not dryrun:
@@ -57,7 +55,6 @@ def copy_files(file_list: List[Path], final_dir: Path, dryrun: bool) -> None:
     for file_path in file_list:
         destination_path = staging_dir / file_path.name
 
-        # Check if the file already exists in existing_files
         if file_path.name in existing_files:
             if dryrun:
                 print(f"Skipped {file_path.name}, already exists in final directory.")
@@ -85,29 +82,59 @@ def copy_files(file_list: List[Path], final_dir: Path, dryrun: bool) -> None:
 
 def resolve_path(path: Optional[str]) -> Optional[Path]:
     """
-    Resolves a given path by expanding ~ to the home directory if present,
-    otherwise converts it to an absolute path. If None, returns None.
+    Expands and resolves the given path string to an absolute Path object.
 
     Args:
         path (Optional[str]): The path to resolve.
 
     Returns:
-        Optional[Path]: The resolved absolute path, or None if input is None.
+        Optional[Path]: The resolved Path object or None if input is None.
     """
     if path is None:
         return None
     return Path(path).expanduser().resolve()
 
 
+def create_config(config_path: Path) -> None:
+    """
+    Creates a JSON configuration file with user-provided paths for 'splice' and 'final' directories.
+
+    Args:
+        config_path (Path): The path where the configuration file will be created.
+
+    Returns:
+        None
+    """
+    # Ensure the parent directory exists
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Prompt for user input
+    splice = input("Enter the Splice directory path: ")
+    final = input("Enter the Final directory path: ")
+
+    # Write the config file with the provided values
+    config_data = {
+        "splice": splice,
+        "final": final
+    }
+
+    with open(config_path, "w") as config_file:
+        json.dump(config_data, config_file, indent=4)
+
+    print(f"Configuration file created at {config_path} with the following values:")
+    print(f"Splice Folder: {splice}")
+    print(f"Final / Destination Folder: {final}")
+
+
 def load_config(config_path: Path) -> dict:
     """
-    Loads configuration from a JSON file.
+    Loads a JSON configuration file if it exists.
 
     Args:
         config_path (Path): The path to the configuration file.
 
     Returns:
-        dict: The parsed JSON configuration with key 'splice_dir'.
+        dict: Dictionary with configuration data, empty if file not found or invalid.
     """
     try:
         with open(config_path, "r") as file:
@@ -120,45 +147,40 @@ def load_config(config_path: Path) -> dict:
 
 def main(args: argparse.Namespace) -> None:
     """
-    Main function to initiate the process of copying audio files
-    from the Splice directory to the final directory's staging directory.
+    Main function to handle argument parsing, config loading, and file copying.
 
     Args:
-        args (argparse.Namespace): The parsed command-line arguments.
+        args (argparse.Namespace): Parsed arguments from the command line.
 
     Returns:
         None
     """
+    config_path = resolve_path(args.config)
+
+    # Create config if it doesn't exist
+    if not config_path.exists() or args.reconfigure:
+        create_config(config_path)
+
     # Load config file if paths are not provided
-    if args.splice is None or args.final is None:
-        config = load_config(resolve_path(args.config))
+    config = load_config(config_path)
 
-        if args.splice is None:
-            args.splice = config.get("splice")
+    splice = config.get("splice")
+    final = config.get("final")
 
-        if args.final is None:
-            args.final = config.get("final")
+    if not splice or not final:
+        print(
+            "Error: Splice directory or final directory is not specified in arguments or config file."
+        )
+        return
 
-        # Validate that paths are now defined
-        if not args.splice or not args.final:
-            print(
-                "Error: Splice directory or final directory is not specified in arguments or config file."
-            )
-            return
+    splice_dir = resolve_path(splice)
+    final_dir = resolve_path(final)
 
-    # Resolve both source and destination directories to Path objects
-    splice_dir = resolve_path(args.splice)
-    final_dir = resolve_path(args.final)
-
-    # Create the final directory if it doesn't exist
     if not final_dir.exists():
         print(f"Creating final directory: {final_dir}")
         final_dir.mkdir(parents=True, exist_ok=True)
 
-    # Get a list of audio files that need to be copied
     files_to_copy = get_audio_files(splice_dir, audio_extensions)
-
-    # Copy the files to the final directory's staging directory
     copy_files(files_to_copy, final_dir, args.dryrun)
 
 
@@ -167,22 +189,15 @@ if __name__ == "__main__":
         description="Copy audio files from Splice folder to a final directory's staging directory."
     )
     parser.add_argument(
-        "--splice",
-        "-s",
-        default=None,
-        help="The root directory where Splice downloads are saved.",
-    )
-    parser.add_argument(
-        "--final",
-        "-f",
-        default=None,
-        help="The final directory where the audio files will be moved to.",
-    )
-    parser.add_argument(
         "--config",
         "-c",
         default="~/.splicer/config",
         help="Path to the JSON configuration file.",
+    )
+    parser.add_argument(
+        "--reconfigure",
+        action="store_true",
+        help="If set, only print the files that would be copied without performing the copy.",
     )
     parser.add_argument(
         "--dryrun",
