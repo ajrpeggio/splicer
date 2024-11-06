@@ -19,6 +19,8 @@ This Python script is designed to copy audio files from a specified Splice downl
 
 ## Installation
 
+From your terminal / commandline, perform the following steps the following:
+
 1. **Clone the Repository**
 
     ```bash
