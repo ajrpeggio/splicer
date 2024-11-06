@@ -181,7 +181,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         "-c",
-        default="~/.splicer/config.json",
+        default="~/.splicer/config",
         help="Path to the JSON configuration file.",
     )
     parser.add_argument(
