@@ -1,20 +1,16 @@
 #!/bin/bash
 
-# Check if the script is run as root
-if [ "$(id -u)" -ne 0 ]; then
-    echo "This script must be run as root (use sudo)." >&2
-    exit 1
-fi
-
 # Create the directory if it doesn't exist
-mkdir -p /opt/splicer
+splicer="${HOME}/.splicer"
+mkdir -p ${splicer}
+config="${splicer}/config.json"
 
 # Prompt for user input
 read -p "Enter the Splice directory path: " splice
 read -p "Enter the Final directory path: " final
 
 # Write the config file with user inputs
-cat <<EOF > /opt/splicer/config.json
+cat <<EOF > ${config}
 {
   "splice": "$splice",
   "final": "$final"
@@ -22,8 +18,8 @@ cat <<EOF > /opt/splicer/config.json
 EOF
 
 # Change ownership of the config file
-chown $(whoami):staff /opt/splicer/config.json
+chown $(whoami):staff ${config}
 
-echo "Configuration file created at /opt/splicer/config.json with the following values:"
+echo "Configuration file created at ${config} with the following values:"
 echo "Splice Directory: $splice"
 echo "Final Directory: $final"
