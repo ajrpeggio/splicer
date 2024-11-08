@@ -1,11 +1,13 @@
-import concurrent.futures
-import shutil
+#!/usr/bin/env python3
 import argparse
+import concurrent.futures
 import json
-import sys
 import logging
 import os
 import platform
+import shutil
+import sys
+import time
 
 from pathlib import Path
 from typing import Optional, Tuple
@@ -65,20 +67,22 @@ def copy_single_file(
         return
 
     # Perform dry run or actual copy
-    if dryrun:
-        log.info(f"Dry Run: Would copy {file_path.name}")
+    try:
+        if dryrun:
+            log.info(f"Dry Run: Would copy {file_path.name}")
+        else:
+            shutil.copy2(file_path, destination_path)
+            log.info(f"Copied {file_path.name}")
         stats["copied"] += 1
-    else:
-        shutil.copy2(file_path, destination_path)
-        log.info(f"Copied {file_path.name}")
-        stats["copied"] += 1
+    except IOError as e:
+        log.error(f"Failed to copy {file_path.name}: {e}")
+        stats["skipped"] += 1
 
 
 def copy_files(
     file_list: list[Path],
     final_dir: Path,
     dryrun: bool,
-    parallel: bool,
     max_threads: int,
     verbose: bool,
 ) -> None:
@@ -96,23 +100,21 @@ def copy_files(
     staging_dir = final_dir / "staging"
     staging_dir.mkdir(parents=True, exist_ok=True)
     stats = {"skipped": 0, "copied": 0}
+    start_time = time.time()  # Start timer
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
+        futures = [
+            executor.submit(
+                copy_single_file, file_path, staging_dir, dryrun, verbose, stats
+            )
+            for file_path in file_list
+        ]
+        # Wait for all threads to complete
+        concurrent.futures.wait(futures)
 
-    if parallel:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
-            futures = [
-                executor.submit(
-                    copy_single_file, file_path, staging_dir, dryrun, verbose, stats
-                )
-                for file_path in file_list
-            ]
-            # Wait for all threads to complete
-            concurrent.futures.wait(futures)
-    else:
-        for file_path in file_list:
-            copy_single_file(file_path, staging_dir, dryrun, verbose, stats)
-
+    elapsed_time = time.time() - start_time  # Calculate elapsed time
     log.info(f"Copy Summary: {stats}")
-
+    log.info(f"Total time taken: {elapsed_time:.2f} seconds.")
 
 def resolve_path(path: Optional[str]) -> Optional[Path]:
     """
@@ -176,9 +178,16 @@ def main(args: argparse.Namespace) -> None:
         args (argparse.Namespace): The arguments parsed from the command line.
     """
     _config = args.config
-    if not args.config:
+    if not _config:
+        # Determine default config path based on OS
         if platform.system() == "Windows":
-            _config = Path(os.getenv("APPDATA", "~")) / "splicer" / "config"
+            appdata_path = os.getenv("APPDATA")
+            if appdata_path:
+                _config = Path(appdata_path) / "splicer" / "config"
+            else:
+                log.warning("APPDATA environment variable not found on Windows.")
+                log.warning("Using home directory for configuration file.")
+                _config = Path.home() / "splicer" / "config"
         else:
             _config = Path("~/.splicer/config").expanduser()
     config_path = resolve_path(_config)
@@ -205,13 +214,18 @@ def main(args: argparse.Namespace) -> None:
     files_to_copy = get_audio_files(splice_dir, audio_extensions)
 
     # Determine max_threads based on the system CPU cores or user input
-    max_threads = (
-        args.max_threads if args.max_threads else min(os.cpu_count(), 8)
-    )  # Limit to 8 for safety
+    try:
+        max_threads = int(args.max_threads) if args.max_threads else min(os.cpu_count(), 8)
+        if max_threads <= 0:
+            raise ValueError("Maximum number of threads must be a positive integer.")
+    except ValueError as e:
+        log.error(f"Invalid value for max-threads: {e}")
+        sys.exit(1)
+    
     log.info(f"Using up to {max_threads} threads for parallel file copying.")
 
     copy_files(
-        files_to_copy, final_dir, args.dryrun, args.parallel, max_threads, args.verbose
+        files_to_copy, final_dir, args.dryrun, max_threads, args.verbose
     )
 
 
@@ -229,9 +243,6 @@ if __name__ == "__main__":
         "--dryrun",
         action="store_true",
         help="Only print the files that would be copied.",
-    )
-    parser.add_argument(
-        "--parallel", action="store_true", help="Enable parallel copying of files."
     )
     parser.add_argument(
         "--max-threads",
