@@ -10,7 +10,7 @@ import sys
 import time
 
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 # Set up the logging configuration
 log = logging.getLogger(__name__)
@@ -22,13 +22,13 @@ logging.basicConfig(
 audio_extensions = (".wav", ".mp3", ".aiff", ".flac", ".ogg", ".m4a")
 
 
-def get_audio_files(source: Path, extensions: Tuple[str]) -> list[Path]:
+def get_audio_files(source: Path, extensions: tuple[str]) -> list[Path]:
     """
     Recursively get all audio files with the specified extensions from a source directory.
 
     Args:
         source (Path): The source directory where audio files are located.
-        extensions (Tuple[str]): A tuple of file extensions to match.
+        extensions (tuple[str]): A tuple of file extensions to match.
 
     Returns:
         list[Path]: A list of Path objects representing the audio files found.
