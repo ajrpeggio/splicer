@@ -12,14 +12,16 @@ import time
 from pathlib import Path
 from typing import Optional
 
+
 # Set up the logging configuration
 log = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
+
 # List of file extensions for audio files to copy (e.g., WAV, MP3, AIFF, FLAC, OGG, M4A)
-audio_extensions = (".wav", ".mp3", ".aiff", ".flac", ".ogg", ".m4a")
+AUDIO_EXTENSIONS = (".wav", ".mp3", ".aiff", ".flac", ".ogg", ".m4a")
 
 
 def get_audio_files(source: Path, extensions: tuple[str]) -> list[Path]:
@@ -101,7 +103,7 @@ def copy_files(
     staging_dir.mkdir(parents=True, exist_ok=True)
     stats = {"skipped": 0, "copied": 0}
     start_time = time.time()  # Start timer
-    
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
         futures = [
             executor.submit(
@@ -115,6 +117,7 @@ def copy_files(
     elapsed_time = time.time() - start_time  # Calculate elapsed time
     log.info(f"Copy Summary: {stats}")
     log.info(f"Total time taken: {elapsed_time:.2f} seconds.")
+
 
 def resolve_path(path: Optional[str]) -> Optional[Path]:
     """
@@ -216,22 +219,22 @@ def main(args: argparse.Namespace) -> None:
         log.info(f"Creating final directory: {final_dir}")
         final_dir.mkdir(parents=True, exist_ok=True)
 
-    files_to_copy = get_audio_files(splice_dir, audio_extensions)
+    files_to_copy = get_audio_files(splice_dir, AUDIO_EXTENSIONS)
 
     # Determine max_threads based on the system CPU cores or user input
     try:
-        max_threads = int(args.max_threads) if args.max_threads else min(os.cpu_count(), 8)
+        max_threads = (
+            int(args.max_threads) if args.max_threads else min(os.cpu_count(), 8)
+        )
         if max_threads <= 0:
             raise ValueError("Maximum number of threads must be a positive integer.")
     except ValueError as e:
         log.error(f"Invalid value for max-threads: {e}")
         sys.exit(1)
-    
+
     log.info(f"Using up to {max_threads} threads for parallel file copying.")
 
-    copy_files(
-        files_to_copy, final_dir, args.dryrun, max_threads, args.verbose
-    )
+    copy_files(files_to_copy, final_dir, args.dryrun, max_threads, args.verbose)
 
 
 if __name__ == "__main__":
