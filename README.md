@@ -14,7 +14,7 @@ This Python script is designed to copy audio files from a specified Splice downl
 
 ## Requirements
 
-- macOS
+- macOS / Windows
 - Python 3.x
 
 ## Installation
