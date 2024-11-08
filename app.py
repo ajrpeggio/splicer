@@ -3,16 +3,22 @@ import shutil
 import argparse
 import json
 import sys
+import logging
+import os
 
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
+import platform
 
+# Set up the logging configuration
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # List of file extensions for audio files to copy (e.g., WAV, MP3, AIFF)
 audio_extensions = (".wav", ".mp3", ".aiff")
 
 
-def get_audio_files(source: Path, extensions: Tuple[str]) -> List[Path]:
+def get_audio_files(source: Path, extensions: Tuple[str]) -> list[Path]:
     """
     Recursively retrieves audio files with specific extensions from the source directory.
 
@@ -21,7 +27,7 @@ def get_audio_files(source: Path, extensions: Tuple[str]) -> List[Path]:
         extensions (Tuple[str]): File extensions to filter for audio files.
 
     Returns:
-        List[Path]: List of file paths that match the specified audio extensions.
+        list[Path]: List of file paths that match the specified audio extensions.
     """
     extensions_set = {ext.lower() for ext in extensions}
     return [
@@ -31,13 +37,13 @@ def get_audio_files(source: Path, extensions: Tuple[str]) -> List[Path]:
     ]
 
 
-def copy_files(file_list: List[Path], final_dir: Path, dryrun: bool) -> None:
+def copy_files(file_list: list[Path], final_dir: Path, dryrun: bool) -> None:
     """
     Copies files from a list to the staging directory within the final directory.
     Skips files if they already exist with the same size.
 
     Args:
-        file_list (List[Path]): List of file paths to be copied.
+        file_list (list[Path]): List of file paths to be copied.
         final_dir (Path): The final destination directory.
         dryrun (bool): If True, only prints the actions without copying.
 
@@ -48,16 +54,14 @@ def copy_files(file_list: List[Path], final_dir: Path, dryrun: bool) -> None:
     if not dryrun:
         staging_dir.mkdir(parents=True, exist_ok=True)
 
-    existing_files = {
-        file.name: file for file in final_dir.rglob("*") if file.is_file()
-    }
+    existing_files = {file.name: file for file in final_dir.rglob("*") if file.is_file()}
 
     for file_path in file_list:
         destination_path = staging_dir / file_path.name
 
         if file_path.name in existing_files:
             if dryrun:
-                print(f"Skipped {file_path.name}, already exists in final directory.")
+                log.info(f"Skipped {file_path.name}, already exists in final directory.")
             continue
 
         if destination_path.exists():
@@ -66,18 +70,18 @@ def copy_files(file_list: List[Path], final_dir: Path, dryrun: bool) -> None:
 
             if source_size == dest_size:
                 if dryrun:
-                    print(
+                    log.info(
                         f"Skipped {file_path.name}, already exists in staging and matches."
                     )
                 continue
             else:
-                print(f"Overwriting {file_path.name}, different size in staging.")
+                log.info(f"Overwriting {file_path.name}, different size in staging.")
 
         if dryrun:
-            print(f"Would copy {file_path.name} to {destination_path}")
+            log.info(f"Would copy {file_path.name} to {destination_path}")
         else:
             shutil.copy2(file_path, destination_path)
-            print(f"Copied {file_path.name} to {destination_path}")
+            log.info(f"Copied {file_path.name} to {destination_path}")
 
 
 def resolve_path(path: Optional[str]) -> Optional[Path]:
@@ -105,25 +109,18 @@ def create_config(config_path: Path) -> None:
     Returns:
         None
     """
-    # Ensure the parent directory exists
     config_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Prompt for user input
     splice = input("Enter the Splice directory path: ")
     final = input("Enter the Final directory path: ")
 
-    # Write the config file with the provided values
-    config_data = {
-        "splice": splice,
-        "final": final
-    }
+    config_data = {"splice": splice, "final": final}
 
     with open(config_path, "w") as config_file:
         json.dump(config_data, config_file, indent=4)
 
-    print(f"Configuration file created at {config_path} with the following values:")
-    print(f"Splice Folder: {splice}")
-    print(f"Final / Destination Folder: {final}")
+    log.info(f"Configuration file created at {config_path} with the following values:")
+    log.info(f"Splice Folder: {splice}")
+    log.info(f"Final / Destination Folder: {final}")
 
 
 def load_config(config_path: Path) -> dict:
@@ -141,7 +138,7 @@ def load_config(config_path: Path) -> dict:
             config = json.load(file)
             return config
     except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error loading config file: {e}")
+        log.error(f"Error loading config file: {e}")
         return {}
 
 
@@ -155,20 +152,25 @@ def main(args: argparse.Namespace) -> None:
     Returns:
         None
     """
-    config_path = resolve_path(args.config)
+    _config = args.config
+    if not args.config:
+        # Determine default config path based on operating system
+        if platform.system() == "Windows":
+            _config = Path(os.getenv("APPDATA", "~")) / "splicer" / "config"
+        else:
+            _config = Path("~/.splicer/config").expanduser()
+    config_path = resolve_path(_config)
 
-    # Create config if it doesn't exist
     if not config_path.exists() or args.reconfigure:
         create_config(config_path)
 
-    # Load config file if paths are not provided
     config = load_config(config_path)
 
     splice = config.get("splice")
     final = config.get("final")
 
     if not splice or not final:
-        print(
+        log.error(
             "Error: Splice directory or final directory is not specified in arguments or config file."
         )
         return
@@ -177,7 +179,7 @@ def main(args: argparse.Namespace) -> None:
     final_dir = resolve_path(final)
 
     if not final_dir.exists():
-        print(f"Creating final directory: {final_dir}")
+        log.info(f"Creating final directory: {final_dir}")
         final_dir.mkdir(parents=True, exist_ok=True)
 
     files_to_copy = get_audio_files(splice_dir, audio_extensions)
@@ -191,7 +193,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         "-c",
-        default="~/.splicer/config",
+        default=None,
         help="Path to the JSON configuration file.",
     )
     parser.add_argument(
@@ -208,5 +210,5 @@ if __name__ == "__main__":
     try:
         main(args)
     except RuntimeError as e:
-        print(e)
+        log.error(e)
         sys.exit(1)
