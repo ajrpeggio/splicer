@@ -1,33 +1,35 @@
-#!/usr/bin/env python3
+import concurrent.futures
 import shutil
 import argparse
 import json
 import sys
 import logging
 import os
+import platform
 
 from pathlib import Path
 from typing import Optional, Tuple
-import platform
 
 # Set up the logging configuration
 log = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
-# List of file extensions for audio files to copy (e.g., WAV, MP3, AIFF)
-audio_extensions = (".wav", ".mp3", ".aiff")
+# List of file extensions for audio files to copy (e.g., WAV, MP3, AIFF, FLAC, OGG, M4A)
+audio_extensions = (".wav", ".mp3", ".aiff", ".flac", ".ogg", ".m4a")
 
 
 def get_audio_files(source: Path, extensions: Tuple[str]) -> list[Path]:
     """
-    Recursively retrieves audio files with specific extensions from the source directory.
+    Recursively get all audio files with the specified extensions from a source directory.
 
     Args:
-        source (Path): The directory to search for audio files.
-        extensions (Tuple[str]): File extensions to filter for audio files.
+        source (Path): The source directory where audio files are located.
+        extensions (Tuple[str]): A tuple of file extensions to match.
 
     Returns:
-        list[Path]: List of file paths that match the specified audio extensions.
+        list[Path]: A list of Path objects representing the audio files found.
     """
     extensions_set = {ext.lower() for ext in extensions}
     return [
@@ -37,62 +39,90 @@ def get_audio_files(source: Path, extensions: Tuple[str]) -> list[Path]:
     ]
 
 
-def copy_files(file_list: list[Path], final_dir: Path, dryrun: bool) -> None:
+def copy_single_file(
+    file_path: Path, staging_dir: Path, dryrun: bool, verbose: bool, stats: dict
+) -> None:
     """
-    Copies files from a list to the staging directory within the final directory.
-    Skips files if they already exist with the same size.
+    Copies a single audio file to the final directory’s staging folder, with checks for file existence and size.
 
     Args:
-        file_list (list[Path]): List of file paths to be copied.
-        final_dir (Path): The final destination directory.
-        dryrun (bool): If True, only prints the actions without copying.
+        file_path (Path): The path to the source audio file.
+        final_dir (Path): The target directory where the file should be copied.
+        dryrun (bool): If True, the file copy is simulated, and no files are actually copied.
+        verbose (bool): If True, log entries for skipped files are shown.
+        stats (dict): A dictionary to track the number of copied and skipped files.
+    """
+    destination_path = staging_dir / file_path.name
 
-    Returns:
-        None
+    # Check if the file already exists and matches size
+    if (
+        destination_path.exists()
+        and destination_path.stat().st_size == file_path.stat().st_size
+    ):
+        if verbose:
+            log.info(f"Skipped {file_path.name}, already exists with matching size.")
+        stats["skipped"] += 1
+        return
+
+    # Perform dry run or actual copy
+    if dryrun:
+        log.info(f"Dry Run: Would copy {file_path.name}")
+        stats["copied"] += 1
+    else:
+        shutil.copy2(file_path, destination_path)
+        log.info(f"Copied {file_path.name}")
+        stats["copied"] += 1
+
+
+def copy_files(
+    file_list: list[Path],
+    final_dir: Path,
+    dryrun: bool,
+    parallel: bool,
+    max_threads: int,
+    verbose: bool,
+) -> None:
+    """
+    Copies a list of files to the final directory, using parallelization if enabled.
+
+    Args:
+        file_list (list[Path]): The list of file paths to copy.
+        final_dir (Path): The target directory where the files should be copied.
+        dryrun (bool): If True, the file copy is simulated.
+        parallel (bool): If True, files will be copied in parallel.
+        max_threads (int): The maximum number of threads to use for parallel copying.
+        verbose (bool): If True, log entries for skipped files are shown.
     """
     staging_dir = final_dir / "staging"
-    if not dryrun:
-        staging_dir.mkdir(parents=True, exist_ok=True)
+    staging_dir.mkdir(parents=True, exist_ok=True)
+    stats = {"skipped": 0, "copied": 0}
 
-    existing_files = {file.name: file for file in final_dir.rglob("*") if file.is_file()}
+    if parallel:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
+            futures = [
+                executor.submit(
+                    copy_single_file, file_path, staging_dir, dryrun, verbose, stats
+                )
+                for file_path in file_list
+            ]
+            # Wait for all threads to complete
+            concurrent.futures.wait(futures)
+    else:
+        for file_path in file_list:
+            copy_single_file(file_path, staging_dir, dryrun, verbose, stats)
 
-    for file_path in file_list:
-        destination_path = staging_dir / file_path.name
-
-        if file_path.name in existing_files:
-            if dryrun:
-                log.info(f"Skipped {file_path.name}, already exists in final directory.")
-            continue
-
-        if destination_path.exists():
-            source_size = file_path.stat().st_size
-            dest_size = destination_path.stat().st_size
-
-            if source_size == dest_size:
-                if dryrun:
-                    log.info(
-                        f"Skipped {file_path.name}, already exists in staging and matches."
-                    )
-                continue
-            else:
-                log.info(f"Overwriting {file_path.name}, different size in staging.")
-
-        if dryrun:
-            log.info(f"Would copy {file_path.name} to {destination_path}")
-        else:
-            shutil.copy2(file_path, destination_path)
-            log.info(f"Copied {file_path.name} to {destination_path}")
+    log.info(f"Copy Summary: {stats}")
 
 
 def resolve_path(path: Optional[str]) -> Optional[Path]:
     """
-    Expands and resolves the given path string to an absolute Path object.
+    Resolves a given path to an absolute path, expanding user directories.
 
     Args:
-        path (Optional[str]): The path to resolve.
+        path (Optional[str]): The path to resolve. If None, returns None.
 
     Returns:
-        Optional[Path]: The resolved Path object or None if input is None.
+        Optional[Path]: The resolved absolute path or None if the input is None.
     """
     if path is None:
         return None
@@ -101,13 +131,10 @@ def resolve_path(path: Optional[str]) -> Optional[Path]:
 
 def create_config(config_path: Path) -> None:
     """
-    Creates a JSON configuration file with user-provided paths for 'splice' and 'final' directories.
+    Creates a new configuration file by prompting the user for input.
 
     Args:
-        config_path (Path): The path where the configuration file will be created.
-
-    Returns:
-        None
+        config_path (Path): The path where the configuration file should be saved.
     """
     config_path.parent.mkdir(parents=True, exist_ok=True)
     splice = input("Enter the Splice directory path: ")
@@ -118,20 +145,18 @@ def create_config(config_path: Path) -> None:
     with open(config_path, "w") as config_file:
         json.dump(config_data, config_file, indent=4)
 
-    log.info(f"Configuration file created at {config_path} with the following values:")
-    log.info(f"Splice Folder: {splice}")
-    log.info(f"Final / Destination Folder: {final}")
+    log.info(f"Configuration file created at {config_path}.")
 
 
 def load_config(config_path: Path) -> dict:
     """
-    Loads a JSON configuration file if it exists.
+    Loads the configuration data from a JSON file.
 
     Args:
         config_path (Path): The path to the configuration file.
 
     Returns:
-        dict: Dictionary with configuration data, empty if file not found or invalid.
+        dict: The configuration data as a dictionary.
     """
     try:
         with open(config_path, "r") as file:
@@ -144,17 +169,14 @@ def load_config(config_path: Path) -> dict:
 
 def main(args: argparse.Namespace) -> None:
     """
-    Main function to handle argument parsing, config loading, and file copying.
+    Main function to handle the execution of the file copying operation, including configuration loading,
+    file discovery, and copying (with optional parallelization).
 
     Args:
-        args (argparse.Namespace): Parsed arguments from the command line.
-
-    Returns:
-        None
+        args (argparse.Namespace): The arguments parsed from the command line.
     """
     _config = args.config
     if not args.config:
-        # Determine default config path based on operating system
         if platform.system() == "Windows":
             _config = Path(os.getenv("APPDATA", "~")) / "splicer" / "config"
         else:
@@ -170,9 +192,7 @@ def main(args: argparse.Namespace) -> None:
     final = config.get("final")
 
     if not splice or not final:
-        log.error(
-            "Error: Splice directory or final directory is not specified in arguments or config file."
-        )
+        log.error("Splice directory or final directory is not specified.")
         return
 
     splice_dir = resolve_path(splice)
@@ -183,7 +203,16 @@ def main(args: argparse.Namespace) -> None:
         final_dir.mkdir(parents=True, exist_ok=True)
 
     files_to_copy = get_audio_files(splice_dir, audio_extensions)
-    copy_files(files_to_copy, final_dir, args.dryrun)
+
+    # Determine max_threads based on the system CPU cores or user input
+    max_threads = (
+        args.max_threads if args.max_threads else min(os.cpu_count(), 8)
+    )  # Limit to 8 for safety
+    log.info(f"Using up to {max_threads} threads for parallel file copying.")
+
+    copy_files(
+        files_to_copy, final_dir, args.dryrun, args.parallel, max_threads, args.verbose
+    )
 
 
 if __name__ == "__main__":
@@ -191,20 +220,29 @@ if __name__ == "__main__":
         description="Copy audio files from Splice folder to a final directory's staging directory."
     )
     parser.add_argument(
-        "--config",
-        "-c",
-        default=None,
-        help="Path to the JSON configuration file.",
+        "--config", "-c", default=None, help="Path to the JSON configuration file."
     )
     parser.add_argument(
-        "--reconfigure",
-        action="store_true",
-        help="If set, only print the files that would be copied without performing the copy.",
+        "--reconfigure", action="store_true", help="Recreate the configuration file."
     )
     parser.add_argument(
         "--dryrun",
         action="store_true",
-        help="If set, only print the files that would be copied without performing the copy.",
+        help="Only print the files that would be copied.",
+    )
+    parser.add_argument(
+        "--parallel", action="store_true", help="Enable parallel copying of files."
+    )
+    parser.add_argument(
+        "--max-threads",
+        type=int,
+        default=None,
+        help="Maximum number of threads for parallel processing.",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose logging, including skipped file entries.",
     )
     args = parser.parse_args()
     try:
