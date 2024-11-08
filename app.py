@@ -169,6 +169,21 @@ def load_config(config_path: Path) -> dict:
         return {}
 
 
+def platform_config() -> Path:
+    # Determine default config path based on OS
+    if platform.system() == "Windows":
+        appdata_path = os.getenv("APPDATA")
+        if appdata_path:
+            config = Path(appdata_path) / "splicer" / "config"
+        else:
+            log.warning("APPDATA environment variable not found on Windows.")
+            log.warning("Using home directory for configuration file.")
+            config = Path.home() / "splicer" / "config"
+    else:
+        config = Path("~/.splicer/config").expanduser()
+    return config
+
+
 def main(args: argparse.Namespace) -> None:
     """
     Main function to handle the execution of the file copying operation, including configuration loading,
@@ -179,17 +194,7 @@ def main(args: argparse.Namespace) -> None:
     """
     _config = args.config
     if not _config:
-        # Determine default config path based on OS
-        if platform.system() == "Windows":
-            appdata_path = os.getenv("APPDATA")
-            if appdata_path:
-                _config = Path(appdata_path) / "splicer" / "config"
-            else:
-                log.warning("APPDATA environment variable not found on Windows.")
-                log.warning("Using home directory for configuration file.")
-                _config = Path.home() / "splicer" / "config"
-        else:
-            _config = Path("~/.splicer/config").expanduser()
+        _config = platform_config()
     config_path = resolve_path(_config)
 
     if not config_path.exists() or args.reconfigure:
