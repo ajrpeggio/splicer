@@ -44,10 +44,16 @@ def get_audio_files(source: Path, extensions: tuple[str]) -> list[Path]:
 
 
 def copy_single_file(
-    file_path: Path, staging_dir: Path, dryrun: bool, verbose: bool, stats: dict
+    file_path: Path,
+    final_dir: Path,
+    dryrun: bool,
+    verbose: bool,
+    stats: dict,
+    filters: dict | None,
 ) -> None:
     """
-    Copies a single audio file to the final directory’s staging folder, with checks for file existence and size.
+    Copies a single audio file to the final directory’s staging folder or a filtered subfolder, 
+    with checks for file existence and size.
 
     Args:
         file_path (Path): The path to the source audio file.
@@ -56,13 +62,25 @@ def copy_single_file(
         verbose (bool): If True, log entries for skipped files are shown.
         stats (dict): A dictionary to track the number of copied and skipped files.
     """
-    destination_path = staging_dir / file_path.name
+    # Determine the subfolder based on the file name and filters
+    destination_subfolder = None
+    for key, value in filters.items():
+        if key in file_path.name.lower():  # Match filter by file name
+            destination_subfolder = value
+            break
 
-    # Check if the file already exists and matches size
-    if (
-        destination_path.exists()
-        and destination_path.stat().st_size == file_path.stat().st_size
-    ):
+    # Set destination path to the "staging" folder by default
+    if destination_subfolder:
+        # If a filter matches, copy to the corresponding folder, not staging
+        _destination_path = final_dir / destination_subfolder
+        _destination_path.mkdir(parents=True, exist_ok=True)
+        destination_path = _destination_path / file_path.name
+    else:
+        # Otherwise, copy to the "staging" folder
+        destination_path = final_dir / "staging" / file_path.name
+
+    # Check if the file already exists in the target directory and has the same size
+    if destination_path.exists() and destination_path.stat().st_size == file_path.stat().st_size:
         if verbose:
             log.info(f"Skipped {file_path.name}, already exists with matching size.")
         stats["skipped"] += 1
@@ -73,6 +91,7 @@ def copy_single_file(
         if dryrun:
             log.info(f"Dry Run: Would copy {file_path.name}")
         else:
+            # Copy the file to the final destination (filtered or "staging")
             shutil.copy2(file_path, destination_path)
             log.info(f"Copied {file_path.name}")
         stats["copied"] += 1
@@ -87,6 +106,7 @@ def copy_files(
     dryrun: bool,
     max_threads: int,
     verbose: bool,
+    filters: dict | None,
 ) -> None:
     """
     Copies a list of files to the final directory, using parallelization if enabled.
@@ -107,7 +127,7 @@ def copy_files(
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
         futures = [
             executor.submit(
-                copy_single_file, file_path, staging_dir, dryrun, verbose, stats
+                copy_single_file, file_path, final_dir, dryrun, verbose, stats, filters
             )
             for file_path in file_list
         ]
@@ -238,6 +258,7 @@ def main() -> None:
 
     splice = config.get("splice")
     final = config.get("final")
+    filters = config.get("filters", {})
 
     if not splice or not final:
         log.error("Splice directory or final directory is not specified.")
@@ -265,7 +286,14 @@ def main() -> None:
 
     log.info(f"Using up to {max_threads} threads for parallel file copying.")
 
-    copy_files(files_to_copy, final_dir, args.dryrun, max_threads, args.verbose)
+    copy_files(
+        files_to_copy,
+        final_dir,
+        args.dryrun,
+        max_threads,
+        args.verbose,
+        filters,
+    )
 
 
 if __name__ == "__main__":
