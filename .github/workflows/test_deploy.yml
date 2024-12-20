@@ -1,14 +1,13 @@
-name: Publish to PyPI
+name: Test Publish to PyPI
 
 on:
   push:
-    tags:
-      - "v*.*.*"  # Run only on version tags like v1.0.0
+    branches:
+      - main
 
 jobs:
-  deploy:
+  publish:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -26,9 +25,9 @@ jobs:
       - name: Build the package
         run: python3 -m build
 
-      - name: Publish to PyPI
+      - name: Publish to Test PyPI
         env:
           TWINE_USERNAME: "__token__"
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
         run: |
-          python3 -m twine upload dist/* --verbose
+          python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose
