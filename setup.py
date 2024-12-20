@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="splicer",
-    version="1.0.1",
+    version="1.0.2",
     author="AJ Rasmussen",
     author_email="ajrpeggio@gmail.com",
     description="A utility to copy audio files from a Splice folder to a final directory's staging directory.",
