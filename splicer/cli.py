@@ -52,7 +52,7 @@ def copy_single_file(
     filters: dict | None,
 ) -> None:
     """
-    Copies a single audio file to the final directory’s staging folder or a filtered subfolder, 
+    Copies a single audio file to the final directory’s staging folder or a filtered subfolder,
     with checks for file existence and size.
 
     Args:
@@ -80,7 +80,10 @@ def copy_single_file(
         destination_path = final_dir / "staging" / file_path.name
 
     # Check if the file already exists in the target directory and has the same size
-    if destination_path.exists() and destination_path.stat().st_size == file_path.stat().st_size:
+    if (
+        destination_path.exists()
+        and destination_path.stat().st_size == file_path.stat().st_size
+    ):
         if verbose:
             log.info(f"Skipped {file_path.name}, already exists with matching size.")
         stats["skipped"] += 1
