@@ -19,7 +19,7 @@ setup(
     install_requires=[],  # Specify any dependencies your script needs
     entry_points={
         "console_scripts": [
-            "splicer=splicer:main",
+            "splicer = splicer.cli:main",
         ],
     },
     package_data={
