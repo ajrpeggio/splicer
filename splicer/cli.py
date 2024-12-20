@@ -187,7 +187,37 @@ def platform_config() -> Path:
     return config
 
 
-def main(args: argparse.Namespace) -> None:
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Copy audio files from Splice folder to a final directory's staging directory."
+    )
+    parser.add_argument(
+        "--config", "-c", default=None, help="Path to the JSON configuration file."
+    )
+    parser.add_argument(
+        "--reconfigure", action="store_true", help="Recreate the configuration file."
+    )
+    parser.add_argument(
+        "--dryrun",
+        action="store_true",
+        help="Only print the files that would be copied.",
+    )
+    parser.add_argument(
+        "--max-threads",
+        type=int,
+        default=None,
+        help="Maximum number of threads for parallel processing.",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose logging, including skipped file entries.",
+    )
+    args = parser.parse_args()
+    return args
+
+
+def main() -> None:
     """
     Main function to handle the execution of the file copying operation, including configuration loading,
     file discovery, and copying (with optional parallelization).
@@ -195,6 +225,7 @@ def main(args: argparse.Namespace) -> None:
     Args:
         args (argparse.Namespace): The arguments parsed from the command line.
     """
+    args = parse_args()
     _config = args.config
     if not _config:
         _config = platform_config()
@@ -238,34 +269,8 @@ def main(args: argparse.Namespace) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Copy audio files from Splice folder to a final directory's staging directory."
-    )
-    parser.add_argument(
-        "--config", "-c", default=None, help="Path to the JSON configuration file."
-    )
-    parser.add_argument(
-        "--reconfigure", action="store_true", help="Recreate the configuration file."
-    )
-    parser.add_argument(
-        "--dryrun",
-        action="store_true",
-        help="Only print the files that would be copied.",
-    )
-    parser.add_argument(
-        "--max-threads",
-        type=int,
-        default=None,
-        help="Maximum number of threads for parallel processing.",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging, including skipped file entries.",
-    )
-    args = parser.parse_args()
     try:
-        main(args)
+        main()
     except RuntimeError as e:
         log.error(e)
         sys.exit(1)

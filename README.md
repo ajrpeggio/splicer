@@ -21,20 +21,19 @@ This Python script is designed to copy audio files from a specified Splice downl
 
 From your terminal / commandline, perform the following steps the following:
 
-1. **Clone the Repository**
+1. **Install CLI from Pypi**
 
     ```bash
-    git clone https://github.com/ajrpeggio/splicer.git
-    cd splicer
+    pip install splicer
     ```
 
-1. **Run Script**
+1. **Run App**
 
     ```bash
-    python3 app.py
+    splicer --help
     ```
 
-Once you run the command `python3 app.py`, you will be prompted to fill in two values:
+Once you run the command `splicer`, you will be prompted to fill in two values:
 
 - Splice Folder
 - Final / Desintination Folder
@@ -44,5 +43,5 @@ Once you run the command `python3 app.py`, you will be prompted to fill in two v
 If you need to reconfigure the folder locations, you can do so by running the app with a --reconfigure flag like so:
 
 ```bash
-python3 app.py --reconfigure
+splicer --reconfigure
 ```
