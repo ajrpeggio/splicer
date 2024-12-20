@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: Main CI Pipeline
 
 on:
   push:
@@ -9,28 +9,27 @@ on:
       - main
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  formatting:
+    runs-on: ubuntu-latest  # Run on the latest Ubuntu image
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3  # Checkout the code
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v3
         with:
-          python-version: "3.13"
+          python-version: "3.13"  # Specify the Python version you want to use
 
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          pip install build twine
 
-      - name: Build the package
-        run: python3 -m build
-
-      - name: Publish to Test PyPI
-        env:
-          TWINE_USERNAME: "__token__"
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
+      - name: Check formatting with black
         run: |
-          python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose
+          pip install black
+          black --check splicer/cli.py
+
+      - name: Run Mypy
+        run: |
+          pip install mypy
+          mypy splicer/cli.py
