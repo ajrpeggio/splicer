@@ -24,7 +24,7 @@ From your terminal / commandline, perform the following steps the following:
 1. **Install CLI from Pypi**
 
     ```bash
-    pip install splicer
+    pip install splicer-cli
     ```
 
 1. **Run App**
